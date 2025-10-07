@@ -1,0 +1,86 @@
+---
+title: "Assignment2"
+author: "StoneJam"
+date: "2025-10-07"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(nycflights13)  # 加载航班数据
+library(gapminder)     # 加载全球社会经济数据
+```
+# 先查看一下数据集
+```{r}
+head(flights, 5)
+```
+
+
+
+# 1.1 select and filter
+Q1:select()+filter()+管道符%>%创建数据框large_delays_JFK
+```{r}
+large_delay_JFK <- flights %>%
+  filter(origin=='JFK', dep_delay>=60)%>%
+  select(year, month, day, dep_delay, arr_delay, carrier)
+
+head(large_delay_JFK, 5)
+```
+Q2:large_delays_JFK数据框有多少个变量？有多少个观测值？
+*变量是列，观测值是行
+```{r}
+n_observation <- nrow(large_delay_JFK)
+n_variable <- ncol(large_delay_JFK)
+print(n_observation)
+print(n_variable)
+```
+
+#1.2 Arrange
+Q3:按到达延误时间以降序（即从最大到最小）对large_delays_JFK进行排序。打印前5行。
+```{r}
+arr_order <- large_delay_JFK %>% arrange(desc(arr_delay))
+head(arr_order, 5)
+```
+#1.3 join and rename
+Q4:使用left_join()将airline_lookup合并到large_delays_JFK中，用完整的航空公司名称替换航空公司代码。将其存储为新变量X。
+```{r}
+airline_lookup <- data.frame(
+carrier = c("AA", "DL", "UA", "B6", "WN"),
+airline_name = c("American Airlines", "Delta", "United Airlines", "JetBlue", "Southwest Airlines"))
+
+X <- left_join(large_delay_JFK, airline_lookup, by = 'carrier') 
+
+head(X, 5)
+```
+Q5:将数据框X中的变量airline_name重命名为简单的airline，然后结合使用select()和print()来显示仅包含airline_name、dep_delay和arr_delay列的前7行。
+```{r}
+Y <- X %>% rename(airline = airline_name) %>% select(airline, dep_delay, arr_delay)
+head(Y, 7)
+```
+Q6: 在这种情况下，使用left_join()和inner_join()是否有区别？你能想到一种会产生区别的情况吗？（例如，在实际的数据分析项目中）
+A6：因为Y中的列X中都有，所以此时左连接和内连接结果一样。但是在一般情况下，内连接只保留X和Y中都有的列，而左连接是保留X中所有列与X和Y重合的列。
+
+#1.4 mutate
+假设我们对一个“延误比率”变量感兴趣，其定义为延误比率=到达延误/出发延误。
+Assume that we are interested in a “delay ratio” variable, defined as delay_ratio = arr_delay / dep_delay.
+
+Q7: 使用mutate()函数，计算large_delays_JFK中所有航班的这一比率。使用select()函数仅保留airline_name（航空公司名称）和delay_ratio（延误比率），并按延误比率的降序排列数据集。展示前10行。
+```{r}
+large_delay_change <- X %>% mutate(delay_ratio = arr_delay/dep_delay) %>% select(airline_name, delay_ratio) %>% arrange(delay_ratio)
+head(large_delay_change, 10)
+``` 
+#1.5 Summarise and Group By
+Q8:使用group_by()按航空公司名称对连接后的数据集进行分组，并创建一个汇总表，包含：
+1. Number of flights (n_flights)
+2. Average departure delay (avg_dep_delay)
+3. Median arrival delay (median_arr_delay)
+4. The maximum delay ratio (max_delay_ratio)
+```{r}
+sum_form <- X %>% mutate(delay_ratio = arr_delay/dep_delay) %>% group_by(airline_name) %>% summarise(n_flights = n(), avg_dep_delay = mean(dep_delay, na.rm=TRUE), median_arr_delay = median(arr_delay, na.rm=TRUE), max_delay_ratio = max(delay_ratio, na.rm=TRUE))
+head(sum_form)
+```
+Q9:按航空公司统计每个与延误相关的列的缺失值数量。
+```{r}
+miss_value <- X %>% group_by(airline_name) %>% summarise(dep_delay_miss = sum(is.na(dep_delay)), arr_delay_miss = sum(is.na(arr_delay)))
+print(miss_value)
+```
+
